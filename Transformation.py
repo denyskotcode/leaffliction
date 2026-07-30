@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-transformation.py — Leaffliction, Part 3 (Person B).
+Transformation.py — Leaffliction, Part 3 (Person B).
 
-Implements >=6 leaf-image transformations (Gaussian blur, mask, ROI objects,
+Implements >=6 leaf-image Transformations (Gaussian blur, mask, ROI objects,
 analyze object, pseudolandmarks, plus a color histogram) using OpenCV/NumPy,
 in the spirit of the PlantCV pipeline shown in the subject.
 
@@ -20,15 +20,15 @@ Public API for Person C (predict.py / train.py):
 
 CLI usage:
 
-    ./transformation.py path/to/image.jpg
-        -> displays the full set of transformations in a matplotlib window.
+    ./Transformation.py path/to/image.jpg
+        -> displays the full set of Transformations in a matplotlib window.
 
-    ./transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory -mask
+    ./Transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory -mask
         -> batch mode: for every image found under -src (recursively),
-           save the requested transformation(s) into -dst, using the
-           original filename + "_<transformation>" suffix.
+           save the requested Transformation(s) into -dst, using the
+           original filename + "_<Transformation>" suffix.
 
-    ./transformation.py -h
+    ./Transformation.py -h
         -> usage / help.
 """
 
@@ -91,7 +91,7 @@ SUFFIXES = {
 
 
 # --------------------------------------------------------------------------
-# Core transformations
+# Core Transformations
 # --------------------------------------------------------------------------
 def _leaf_mask(img_rgb):
     """
@@ -136,7 +136,7 @@ def _largest_contour(mask):
 
 def transform_image(img_rgb):
     """
-    Run the full transformation pipeline on an RGB uint8 image.
+    Run the full Transformation pipeline on an RGB uint8 image.
 
     Returns a dict with keys:
         original, gaussian_blur, mask, roi_objects,
@@ -261,7 +261,7 @@ def _find_images(src_dir):
 
 def _requested_keys(args):
     """
-    Which transformation keys were requested via flags. If none of the
+    Which Transformation keys were requested via flags. If none of the
     per-transform flags were passed, default to ALL of them (+ histogram).
     """
     flag_map = {
@@ -349,9 +349,9 @@ def _process_batch(src, dst, keys, include_hist):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="transformation.py",
+        prog="Transformation.py",
         description=(
-            "Apply leaf-image transformations (Gaussian blur, mask, "
+            "Apply leaf-image Transformations (Gaussian blur, mask, "
             "ROI objects, analyze object, pseudolandmarks, color "
             "histogram). Single image path -> display results. "
             "-src/-dst -> batch-save results to a directory."

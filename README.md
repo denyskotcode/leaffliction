@@ -2,7 +2,7 @@
 
 Computer vision project: image classification for plant leaf disease
 recognition. The pipeline covers data set analysis, data augmentation,
-image transformation, and a CNN-based classifier with prediction.
+image Transformation, and a CNN-based classifier with prediction.
 
 ## Project structure
 
@@ -10,7 +10,7 @@ image transformation, and a CNN-based classifier with prediction.
 leaffliction/
 ├── Distribution.py        # Part 1 — data set analysis (pie/bar charts)
 ├── Augmentation.py        # Part 2 — data augmentation (balancing)
-├── transformation.py      # Part 3 — image transformations
+├── Transformation.py      # Part 3 — image Transformations
 ├── train.py                # Part 4 — model training
 ├── predict.py               # Part 4 — prediction / evaluation
 ├── utils/
@@ -89,60 +89,60 @@ names depend on Person A's implementation):
 
 ---
 
-## Part 3 — transformation.py
+## Part 3 — Transformation.py
 
-Apply leaf-image transformations: Gaussian blur, mask, ROI objects,
+Apply leaf-image Transformations: Gaussian blur, mask, ROI objects,
 analyze object, pseudolandmarks, plus a color histogram.
 
 ### Help
 
 ```bash
-./transformation.py -h
-python3 ./transformation.py -h
+./Transformation.py -h
+python3 ./Transformation.py -h
 ```
 
 ### Single image — display mode
 
-Shows all transformations (+ histogram) in a matplotlib window.
+Shows all Transformations (+ histogram) in a matplotlib window.
 
 ```bash
-./transformation.py ./Apple/apple_healthy/image\ \(1\).JPG
-python3 ./transformation.py "./leaves/images/Apple_healthy/image (1).JPG"
+./Transformation.py ./Apple/apple_healthy/image\ \(1\).JPG
+python3 ./Transformation.py "./leaves/images/Apple_healthy/image (1).JPG"
 ```
 
 ### Directory — batch save mode
 
-Saves every requested transformation for every image found (recursively)
-under `-src` into `-dst`, named `<original>_<transformation><ext>`.
+Saves every requested Transformation for every image found (recursively)
+under `-src` into `-dst`, named `<original>_<Transformation><ext>`.
 
 ```bash
 # save everything (all 5 transforms + histogram)
-./transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory
+./Transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory
 
 # save only the mask, per subject's example command
-./transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory -mask
+./Transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory -mask
 ```
 
-### Individual transformation flags
+### Individual Transformation flags
 
 Combine any of these; if none are given, all are produced.
 
 ```bash
-./transformation.py -src leaves/images/Apple_healthy/ -dst out -blur
-./transformation.py -src leaves/images/Apple_healthy/ -dst out -mask
-./transformation.py -src leaves/images/Apple_healthy/ -dst out -roi
-./transformation.py -src leaves/images/Apple_healthy/ -dst out -object
-./transformation.py -src leaves/images/Apple_healthy/ -dst out -landmarks
-./transformation.py -src leaves/images/Apple_healthy/ -dst out -histogram
+./Transformation.py -src leaves/images/Apple_healthy/ -dst out -blur
+./Transformation.py -src leaves/images/Apple_healthy/ -dst out -mask
+./Transformation.py -src leaves/images/Apple_healthy/ -dst out -roi
+./Transformation.py -src leaves/images/Apple_healthy/ -dst out -object
+./Transformation.py -src leaves/images/Apple_healthy/ -dst out -landmarks
+./Transformation.py -src leaves/images/Apple_healthy/ -dst out -histogram
 
 # combine several
-./transformation.py -src leaves/images/Apple_healthy/ -dst out -mask -histogram
+./Transformation.py -src leaves/images/Apple_healthy/ -dst out -mask -histogram
 ```
 
 ### Using it as a library (for Person C)
 
 ```python
-from transformation import transform_image, color_histogram, transformed_for_display
+from Transformation import transform_image, color_histogram, transformed_for_display
 from utils.dataset import load_image
 
 img_rgb = load_image("./leaves/images/Apple_healthy/image (1).JPG")
@@ -239,9 +239,9 @@ python3 -m pip install --user --break-system-packages -r requirements.txt
 ./Augmentation.py "./Apple/apple_healthy/image (1).JPG"
 
 # part 3
-./transformation.py -h
-./transformation.py "./Apple/apple_healthy/image (1).JPG"
-./transformation.py -src Apple/apple_healthy/ -dst dst_directory -mask
+./Transformation.py -h
+./Transformation.py "./Apple/apple_healthy/image (1).JPG"
+./Transformation.py -src Apple/apple_healthy/ -dst dst_directory -mask
 
 # part 4
 ./train.py ./Apple/
