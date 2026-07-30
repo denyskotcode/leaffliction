@@ -1,0 +1,58 @@
+# --- Datasets & generated artifacts (MUST NOT be committed, per subject) ---
+# raw / augmented image datasets
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
+*.png
+*.PNG
+!docs/**            # allow images used only for README/docs, if any
+augmented_directory/
+dataset/
+datasets/
+Apple/
+Grape/
+data/
+
+# release artifacts (zip is forbidden in git; signature.txt is the only
+# allowed trace of it, and even that should be regenerated, not hand-edited)
+dataset.zip
+learnings.zip
+*.zip
+
+# trained model files
+*.h5
+*.pt
+*.pth
+*.pkl
+*.joblib
+models/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# venvs (in case someone on the team does use one)
+.venv/
+venv/
+env/
+
+# --- Editors / OS junk ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Logs / caches ---
+*.log
+.cache/
+.pytest_cache/
+.mypy_cache/
+.flake8_cache/
