@@ -2,15 +2,25 @@
 
 Computer vision project: image classification for plant leaf disease
 recognition. The pipeline covers data set analysis, data augmentation,
-image Transformation, and a CNN-based classifier with prediction.
+image transformation, and a CNN-based classifier with prediction.
 
 ## Project structure
 
 ```
 leaffliction/
+├── leaves/
+│   └── images/
+│       ├── Apple_Black_rot/
+│       ├── Apple_healthy/
+│       ├── Apple_rust/
+│       ├── Apple_scab/
+│       ├── Grape_Black_rot/
+│       ├── Grape_Esca/
+│       ├── Grape_healthy/
+│       └── Grape_spot/
 ├── Distribution.py        # Part 1 — data set analysis (pie/bar charts)
 ├── Augmentation.py        # Part 2 — data augmentation (balancing)
-├── Transformation.py      # Part 3 — image Transformations
+├── Transformation.py      # Part 3 — image transformations
 ├── train.py                # Part 4 — model training
 ├── predict.py               # Part 4 — prediction / evaluation
 ├── utils/
@@ -44,18 +54,21 @@ Analyze a data set directory and display a pie chart and a bar chart per
 plant type, labeled from the subdirectory names.
 
 ```bash
-./Distribution.py ./Apple
-./Distribution.py ./Grape
+./Distribution.py ./leaves/images
 ```
 
 ```bash
-# example directory layout expected:
-find . -maxdepth 2
-# ./Apple
-# ./Apple/apple_healthy
-# ./Apple/apple_apple_scab
-# ./Apple/apple_black_rot
-# ./Apple/apple_cedar_apple_rust
+# actual directory layout:
+tree --filelimit=13 leaves/images
+# leaves/images/
+# ├── Apple_Black_rot
+# ├── Apple_healthy
+# ├── Apple_rust
+# ├── Apple_scab
+# ├── Grape_Black_rot
+# ├── Grape_Esca
+# ├── Grape_healthy
+# └── Grape_spot
 ```
 
 ---
@@ -66,7 +79,7 @@ Balance the data set by generating 6 augmented versions of a given image
 (Flip, Rotate, Skew, Shear, Crop, Distortion), saved next to the original.
 
 ```bash
-./Augmentation.py "./Apple/apple_healthy/image (1).JPG"
+./Augmentation.py "leaves/images/Apple_healthy/image (1).JPG"
 ```
 
 ```bash
@@ -80,18 +93,18 @@ ls
 # image (1)_Distortion.JPG
 ```
 
-Run in bulk over a whole directory to balance every class (exact flag
-names depend on Person A's implementation):
+Run in bulk over a whole class directory to balance it (exact flag names
+depend on Person A's implementation):
 
 ```bash
-./Augmentation.py -src ./Apple/apple_black_rot -dst ./Apple/apple_black_rot
+./Augmentation.py -src leaves/images/Grape_healthy -dst leaves/images/Grape_healthy
 ```
 
 ---
 
 ## Part 3 — Transformation.py
 
-Apply leaf-image Transformations: Gaussian blur, mask, ROI objects,
+Apply leaf-image transformations: Gaussian blur, mask, ROI objects,
 analyze object, pseudolandmarks, plus a color histogram.
 
 ### Help
@@ -103,40 +116,40 @@ python3 ./Transformation.py -h
 
 ### Single image — display mode
 
-Shows all Transformations (+ histogram) in a matplotlib window.
+Shows all transformations (+ histogram) in a matplotlib window.
 
 ```bash
-./Transformation.py ./Apple/apple_healthy/image\ \(1\).JPG
-python3 ./Transformation.py "./leaves/images/Apple_healthy/image (1).JPG"
+./Transformation.py "leaves/images/Apple_healthy/image (1).JPG"
+python3 ./Transformation.py "leaves/images/Apple_healthy/image (1).JPG"
 ```
 
 ### Directory — batch save mode
 
-Saves every requested Transformation for every image found (recursively)
+Saves every requested transformation for every image found (recursively)
 under `-src` into `-dst`, named `<original>_<Transformation><ext>`.
 
 ```bash
 # save everything (all 5 transforms + histogram)
-./Transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory
+./Transformation.py -src leaves/images/Apple_healthy -dst dst_directory
 
 # save only the mask, per subject's example command
-./Transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory -mask
+./Transformation.py -src leaves/images/Apple_healthy -dst dst_directory -mask
 ```
 
-### Individual Transformation flags
+### Individual transformation flags
 
 Combine any of these; if none are given, all are produced.
 
 ```bash
-./Transformation.py -src leaves/images/Apple_healthy/ -dst out -blur
-./Transformation.py -src leaves/images/Apple_healthy/ -dst out -mask
-./Transformation.py -src leaves/images/Apple_healthy/ -dst out -roi
-./Transformation.py -src leaves/images/Apple_healthy/ -dst out -object
-./Transformation.py -src leaves/images/Apple_healthy/ -dst out -landmarks
-./Transformation.py -src leaves/images/Apple_healthy/ -dst out -histogram
+./Transformation.py -src leaves/images/Apple_healthy -dst out -blur
+./Transformation.py -src leaves/images/Apple_healthy -dst out -mask
+./Transformation.py -src leaves/images/Apple_healthy -dst out -roi
+./Transformation.py -src leaves/images/Apple_healthy -dst out -object
+./Transformation.py -src leaves/images/Apple_healthy -dst out -landmarks
+./Transformation.py -src leaves/images/Apple_healthy -dst out -histogram
 
 # combine several
-./Transformation.py -src leaves/images/Apple_healthy/ -dst out -mask -histogram
+./Transformation.py -src leaves/images/Apple_healthy -dst out -mask -histogram
 ```
 
 ### Using it as a library (for Person C)
@@ -145,7 +158,7 @@ Combine any of these; if none are given, all are produced.
 from Transformation import transform_image, color_histogram, transformed_for_display
 from utils.dataset import load_image
 
-img_rgb = load_image("./leaves/images/Apple_healthy/image (1).JPG")
+img_rgb = load_image("leaves/images/Apple_healthy/image (1).JPG")
 
 transforms = transform_image(img_rgb)
 # transforms.keys() -> original, gaussian_blur, mask, roi_objects,
@@ -166,7 +179,7 @@ preprocessing images as needed. Saves the learned model + augmented
 images into a `.zip`.
 
 ```bash
-./train.py ./Apple/
+./train.py leaves/images
 ```
 
 ### Prediction
@@ -175,7 +188,7 @@ Loads a saved model, runs on a single image, displays original +
 transformed image, and prints the predicted disease class.
 
 ```bash
-./predict.py "./Apple/apple_healthy/image (1).JPG"
+./predict.py "leaves/images/Apple_healthy/image (1).JPG"
 ```
 
 Validation accuracy must be **> 90%** on a validation set of **at least
@@ -190,7 +203,7 @@ Built once the augmented data set (Person A) and trained model /
 
 ```bash
 # 1. assemble the release archive
-zip -r dataset.zip augmented_directory/ learnings.zip
+zip -r dataset.zip leaves/images learnings.zip
 
 # 2. generate the signature (choose the command matching your OS)
 sha1sum dataset.zip            # Linux
@@ -233,22 +246,22 @@ flake8 *.py utils/*.py --max-line-length=100
 python3 -m pip install --user --break-system-packages -r requirements.txt
 
 # part 1
-./Distribution.py ./Apple
+./Distribution.py ./leaves/images
 
 # part 2
-./Augmentation.py "./Apple/apple_healthy/image (1).JPG"
+./Augmentation.py "leaves/images/Apple_healthy/image (1).JPG"
 
 # part 3
 ./Transformation.py -h
-./Transformation.py "./Apple/apple_healthy/image (1).JPG"
-./Transformation.py -src Apple/apple_healthy/ -dst dst_directory -mask
+./Transformation.py "leaves/images/Apple_healthy/image (1).JPG"
+./Transformation.py -src leaves/images/Apple_healthy -dst dst_directory -mask
 
 # part 4
-./train.py ./Apple/
-./predict.py "./Apple/apple_healthy/image (1).JPG"
+./train.py leaves/images
+./predict.py "leaves/images/Apple_healthy/image (1).JPG"
 
 # release
-zip -r dataset.zip augmented_directory/ learnings.zip
+zip -r dataset.zip leaves/images learnings.zip
 sha1sum dataset.zip | awk '{print $1}' > signature.txt
 
 # lint
