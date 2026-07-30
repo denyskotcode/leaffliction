@@ -26,7 +26,7 @@ CLI usage:
     ./transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory -mask
         -> batch mode: for every image found under -src (recursively),
            save the requested transformation(s) into -dst, using the
-           original filename + "_<Transformation>" suffix.
+           original filename + "_<transformation>" suffix.
 
     ./transformation.py -h
         -> usage / help.
@@ -349,7 +349,7 @@ def _process_batch(src, dst, keys, include_hist):
 
 def build_parser():
     parser = argparse.ArgumentParser(
-        prog="Transformation.py",
+        prog="transformation.py",
         description=(
             "Apply leaf-image transformations (Gaussian blur, mask, "
             "ROI objects, analyze object, pseudolandmarks, color "
