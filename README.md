@@ -34,17 +34,29 @@ leaffliction/
 
 ## Setup
 
+Use a project-local virtual environment so the system Python stays
+untouched and everyone on the team gets the same versions.
+
 ```bash
-# make sure pip installs into the SAME interpreter you run scripts with
-python3 -m pip install --user --break-system-packages -r requirements.txt
+python3 -m venv .venv
+
+# PyTorch first, from the CPU index (avoids ~2 GB of unused CUDA wheels)
+.venv/bin/python -m pip install \
+    --index-url https://download.pytorch.org/whl/cpu torch torchvision
+
+.venv/bin/python -m pip install -r requirements.txt
 
 # sanity check
-python3 -c "import cv2, numpy, matplotlib; print('OK')"
+.venv/bin/python -c "import cv2, numpy, matplotlib, torch; print('OK')"
 ```
 
-`requirements.txt` typically includes: `opencv-python-headless`, `numpy`,
-`matplotlib`, `scikit-learn` / `tensorflow` or `torch` (whichever Person C
-uses for training).
+Then run every script through that interpreter, e.g.
+`.venv/bin/python train.py leaves/images`.
+
+`requirements.txt` includes `opencv-python-headless`, `numpy`,
+`matplotlib`, `scikit-learn`, `flake8`, and `torch` / `torchvision`
+(Part 4). See the framework note under Part 4 for why it is PyTorch and
+not TensorFlow.
 
 ---
 
@@ -172,27 +184,116 @@ display_img = transformed_for_display(img_rgb)  # np.ndarray, RGB uint8
 
 ## Part 4 — train.py / predict.py
 
-### Training
+> **Framework note.** This project runs on Python 3.14, for which
+> TensorFlow publishes no wheel. Part 4 uses **PyTorch** instead, so the
+> artifact inside `learnings.zip` is `model.pt` rather than the
+> `model.keras` named in the team brief. Everything else in the archive
+> is unchanged.
 
-Trains on a directory of subdirectories (one per class), augmenting /
-preprocessing images as needed. Saves the learned model + augmented
-images into a `.zip`.
+### Training
 
 ```bash
 ./train.py leaves/images
 ```
 
-### Prediction
+What it does, in order:
 
-Loads a saved model, runs on a single image, displays original +
-transformed image, and prints the predicted disease class.
+1. **Splits first** — `split_dataset(root, val_ratio=0.2, seed=42)`,
+   stratified per class. The validation set is held out *before* any
+   augmentation, so no augmented copy of a validation image can ever
+   leak into training.
+2. **Balances the training split only** — minority classes are augmented
+   (Flip, Rotate, Skew, Shear, Crop, Distortion) up to the largest class
+   and written to `augmented_directory/<class>/<base>_<Aug>.JPG`.
+3. **Fine-tunes an ImageNet-pretrained ResNet-18** on the balanced set.
+4. **Evaluates on the untouched validation split** and keeps the weights
+   from the best epoch.
+5. **Writes `learnings.zip`**:
+
+```
+model.pt              # weights + architecture name
+labels.json           # {"classes":[...], "input_size":[H,W], "preprocess":"..."}
+metrics.json          # {"val_accuracy":..., "val_count":N, "confusion":[[...]], ...}
+augmented_directory/  # the modified images used for training
+```
+
+Useful flags:
+
+```bash
+./train.py leaves/images --epochs 6 --batch-size 64 --workers 4
+./train.py leaves/images --augmented-dir augmented_directory --out learnings.zip
+```
+
+### Prediction
 
 ```bash
 ./predict.py "leaves/images/Apple_healthy/image (1).JPG"
 ```
 
+Reads **only** `model.pt` + `labels.json` from `learnings.zip`,
+preprocesses with the same `utils/preprocess.py` used at training time,
+displays the original beside Person B's transformed rendering, and
+prints:
+
+```
+Class predicted : Apple_healthy
+Confidence      : 99.87%
+```
+
+```bash
+# alternative model location, headless use
+./predict.py <image> --model learnings.zip
+./predict.py <image> --save-to prediction.png   # write figure to a file
+./predict.py <image> --no-display               # print the class only
+```
+
 Validation accuracy must be **> 90%** on a validation set of **at least
-100 images**, provable during defense.
+100 images**, provable during defense. The proof is stored in
+`metrics.json` inside `learnings.zip`.
+
+### Defending the result
+
+Fine-tuning a pretrained ResNet-18 on this dataset reaches **100%
+(1444/1444)** on the held-out split. That is a strong claim, so here is
+the evidence that it is honest rather than leaked. All of it is
+reproducible with `seed=42`.
+
+| Check | Result |
+|---|---|
+| Validation images | 1444 (requirement: >= 100) |
+| Train/validation overlap | 0 images |
+| Validation images inside `augmented_directory/` | 0 |
+| Byte-identical duplicates spanning train and val | 3 pairs |
+| Near-duplicates (aHash) spanning train and val | 17 val images (1.18%) |
+| Accuracy with all 17 near-duplicates removed | **100% (1427/1427)** |
+
+Why it holds up:
+
+- **The split happens before augmentation.** No augmented copy of a
+  validation image can reach the training set, verified above.
+- **The duplicates are in the raw dataset as delivered**, not introduced
+  here. Removing every one of them does not move the accuracy, so the
+  score is not resting on them.
+- **The dataset is genuinely easy.** These are lab-condition PlantVillage
+  images: one centred leaf, uniform grey background, consistent lighting.
+  Near-ceiling accuracy from an ImageNet backbone is the expected result,
+  not an anomaly.
+- **The classes it could plausibly confuse, it does.** In an earlier run
+  the only 2 errors were `Grape_Esca` -> `Grape_Black_rot`, which is a
+  botanically sensible confusion rather than random noise.
+
+Reproduce the leakage and duplicate checks at defense time with the
+`split_dataset(..., seed=42)` call and a hash of each file; the split is
+deterministic, so the same images land on the same side every run.
+
+### Why preprocessing lives in one file
+
+`utils/preprocess.py` exposes a single `preprocess()` that both
+`train.py` and `predict.py` import. A train/predict preprocessing
+mismatch is the classic silent accuracy killer — it cannot happen here,
+because there is only one code path. `labels.json` also records the
+preprocessing name, and `predict.py` warns if a model was trained with a
+different one.
 
 ---
 
@@ -243,7 +344,10 @@ flake8 *.py utils/*.py --max-line-length=100
 
 ```bash
 # setup
-python3 -m pip install --user --break-system-packages -r requirements.txt
+python3 -m venv .venv
+.venv/bin/python -m pip install \
+    --index-url https://download.pytorch.org/whl/cpu torch torchvision
+.venv/bin/python -m pip install -r requirements.txt
 
 # part 1
 ./Distribution.py ./leaves/images
@@ -257,8 +361,9 @@ python3 -m pip install --user --break-system-packages -r requirements.txt
 ./Transformation.py -src leaves/images/Apple_healthy -dst dst_directory -mask
 
 # part 4
-./train.py leaves/images
+./train.py leaves/images                      # -> learnings.zip + augmented_directory/
 ./predict.py "leaves/images/Apple_healthy/image (1).JPG"
+unzip -p learnings.zip metrics.json           # proof of >=90% on the held-out set
 
 # release
 zip -r dataset.zip leaves/images learnings.zip

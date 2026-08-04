@@ -24,9 +24,15 @@ learnings.zip
 *.h5
 *.pt
 *.pth
+*.keras
 *.pkl
 *.joblib
 models/
+
+# train.py staging dir for the learnings.zip payload, and the figure
+# predict.py writes when no display is available
+learnings/
+prediction.png
 
 # --- Python ---
 __pycache__/

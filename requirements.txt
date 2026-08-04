@@ -1,0 +1,20 @@
+# Leaffliction dependencies.
+#
+# This project targets Python 3.14, for which TensorFlow publishes no
+# wheel; Part 4 therefore uses PyTorch. Install the CPU build to avoid
+# pulling ~2 GB of unused CUDA libraries:
+#
+#   python3 -m venv .venv
+#   .venv/bin/python -m pip install \
+#       --index-url https://download.pytorch.org/whl/cpu torch torchvision
+#   .venv/bin/python -m pip install -r requirements.txt
+
+numpy
+opencv-python-headless
+matplotlib
+scikit-learn
+flake8
+
+# Part 4 (train.py / predict.py) -- see the CPU-index note above.
+torch
+torchvision
