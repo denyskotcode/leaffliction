@@ -331,11 +331,14 @@ cat signature.txt
 
 ## Linting
 
-All Python files must pass `flake8`:
+All Python files must pass `flake8` on its **default settings** — the
+subject calls it the norm (`alias norminette_python=flake8`), and an
+evaluator runs it bare, so the 79-column default is the limit that
+counts. Do not relax it with `--max-line-length`.
 
 ```bash
 python3 -m pip install --user --break-system-packages flake8
-flake8 *.py utils/*.py --max-line-length=100
+flake8 *.py utils/*.py
 ```
 
 ---
@@ -369,6 +372,6 @@ unzip -p learnings.zip metrics.json           # proof of >=90% on the held-out s
 zip -r dataset.zip leaves/images learnings.zip
 sha1sum dataset.zip | awk '{print $1}' > signature.txt
 
-# lint
-flake8 *.py utils/*.py --max-line-length=100
+# lint (default settings: 79 columns, as the subject requires)
+flake8 *.py utils/*.py
 ```
