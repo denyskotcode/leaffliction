@@ -602,10 +602,10 @@ prints the class.
 pulls in `pyplot`, and the backend cannot be changed afterwards. This is
 why the imports below it carry `# noqa: E402`.
 
-### `_load_from_zip(zip_path, temp_dir)` / `_load_from_dir(directory)`
+### `locate_artifacts(model_source, temp_dir)`
 
-Private. Locate `model.pt` and `labels.json` — extracting from an archive,
-or reading an unpacked folder. Both raise `ValueError` naming what is
+Locates `model.pt` and `labels.json` — extracting them from an archive, or
+reading them out of an unpacked folder. Raises `ValueError` naming what is
 missing.
 
 ### `load_model(model_source, temp_dir) -> (model, classes)`
@@ -649,7 +649,7 @@ with tempfile.TemporaryDirectory() as td:
 "
 ```
 
-### `_transformed(img_rgb)`
+### `transformed(img_rgb)`
 
 Calls Person B's `transformed_for_display`. Wrapped in `try/except`: if
 B's module is missing or fails, prediction still works and the original
@@ -722,9 +722,9 @@ only — it is **not** part of the training path.
 - **`color_histogram(img_rgb) -> matplotlib.Figure`** — per-channel RGB +
   HSV-saturation histograms.
 
-Internally, `_leaf_mask` isolates the leaf via HSV saturation + Otsu
-thresholding, morphological cleanup, and largest-contour selection;
-`_largest_contour` picks the biggest contour by area.
+Internally, `leaf_outline` isolates the leaf via HSV saturation + Otsu
+thresholding, morphological cleanup, and largest-contour selection,
+returning both the filled mask and that contour in one call.
 
 ```bash
 .venv/bin/python -c "

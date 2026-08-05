@@ -2,10 +2,10 @@
 """
 predict.py <image> -- Part 4 of Leaffliction: classify one leaf image.
 
-Reads model.pt + labels.json out of learnings.zip, preprocesses the
-image with the *same* utils.preprocess used during training, shows the
-original next to Person B's transformed rendering, and prints the
-predicted class.
+Reads model.pt and labels.json out of learnings.zip, prepares the image
+with the *same* utils.preprocess used during training, prints the
+predicted class and shows the original beside Part 3's transformed
+rendering.
 """
 
 import argparse
@@ -17,7 +17,7 @@ import zipfile
 
 import matplotlib
 
-# A backend must be chosen before pyplot is imported anywhere, and
+# The backend has to be picked before pyplot is imported anywhere, and
 # importing Transformation pulls pyplot in. Fall back to the file-only
 # backend when there is no display (ssh, CI, --save-to).
 if not os.environ.get("DISPLAY") and sys.platform != "darwin":
@@ -33,44 +33,39 @@ from utils.dataset import load_image  # noqa: E402
 from utils.preprocess import PREPROCESS_NAME, preprocess  # noqa: E402
 
 DEFAULT_MODEL = "learnings.zip"
+NEEDED = ("model.pt", "labels.json")
 
 
-def _load_from_zip(zip_path, temp_dir):
-    """Extract model.pt and labels.json from the archive."""
-    with zipfile.ZipFile(zip_path) as archive:
-        names = set(archive.namelist())
-        missing = {"model.pt", "labels.json"} - names
+def locate_artifacts(model_source, temp_dir):
+    """
+    Paths to model.pt and labels.json, from a folder or a learnings.zip.
+
+    Only those two are needed: metrics.json and the augmented images are
+    training-time artifacts and are never read here.
+    """
+    if os.path.isdir(model_source):
+        paths = [os.path.join(model_source, name) for name in NEEDED]
+        missing = [path for path in paths if not os.path.isfile(path)]
+        if missing:
+            raise ValueError(f"missing {', '.join(missing)}")
+        return paths
+
+    if not zipfile.is_zipfile(model_source):
+        raise ValueError(f"not a zip archive or directory: {model_source}")
+
+    with zipfile.ZipFile(model_source) as archive:
+        missing = [name for name in NEEDED if name not in archive.namelist()]
         if missing:
             raise ValueError(
-                f"{zip_path} is missing {', '.join(sorted(missing))}")
-        archive.extract("model.pt", temp_dir)
-        archive.extract("labels.json", temp_dir)
-    return (os.path.join(temp_dir, "model.pt"),
-            os.path.join(temp_dir, "labels.json"))
-
-
-def _load_from_dir(directory):
-    model_path = os.path.join(directory, "model.pt")
-    labels_path = os.path.join(directory, "labels.json")
-    for path in (model_path, labels_path):
-        if not os.path.isfile(path):
-            raise ValueError(f"missing {path}")
-    return model_path, labels_path
+                f"{model_source} is missing {', '.join(missing)}")
+        for name in NEEDED:
+            archive.extract(name, temp_dir)
+    return [os.path.join(temp_dir, name) for name in NEEDED]
 
 
 def load_model(model_source, temp_dir):
-    """
-    Return (model, classes) from a learnings.zip or an unpacked folder.
-
-    Only model.pt and labels.json are read -- metrics.json and the
-    augmented images are training-time artifacts.
-    """
-    if os.path.isdir(model_source):
-        model_path, labels_path = _load_from_dir(model_source)
-    elif zipfile.is_zipfile(model_source):
-        model_path, labels_path = _load_from_zip(model_source, temp_dir)
-    else:
-        raise ValueError(f"not a zip archive or directory: {model_source}")
+    """Return (model, classes) ready for :func:`predict`."""
+    model_path, labels_path = locate_artifacts(model_source, temp_dir)
 
     with open(labels_path, encoding="utf-8") as handle:
         labels = json.load(handle)
@@ -78,10 +73,11 @@ def load_model(model_source, temp_dir):
     if not classes:
         raise ValueError("labels.json has no 'classes' list")
 
-    saved = labels.get("preprocess")
-    if saved and saved != PREPROCESS_NAME:
-        print(f"warning: model was trained with preprocessing '{saved}' "
-              f"but this build uses '{PREPROCESS_NAME}'", file=sys.stderr)
+    trained_with = labels.get("preprocess")
+    if trained_with and trained_with != PREPROCESS_NAME:
+        print(f"warning: model was trained with preprocessing "
+              f"'{trained_with}' but this build uses '{PREPROCESS_NAME}'",
+              file=sys.stderr)
 
     checkpoint = torch.load(model_path, map_location="cpu")
     model = models.resnet18(weights=None)
@@ -95,17 +91,17 @@ def predict(model, classes, img_rgb):
     """Return (label, confidence) for one RGB uint8 image."""
     batch = torch.from_numpy(preprocess(img_rgb)).unsqueeze(0)
     with torch.no_grad():
-        probabilities = torch.softmax(model(batch), dim=1)[0]
-    index = int(probabilities.argmax())
-    return classes[index], float(probabilities[index])
+        scores = torch.softmax(model(batch), dim=1)[0]
+    best = int(scores.argmax())
+    return classes[best], float(scores[best])
 
 
-def _transformed(img_rgb):
-    """Person B's rendering; degrade to the original if unavailable."""
+def transformed(img_rgb):
+    """Part 3's rendering, degrading to the original if it is missing."""
     try:
         from Transformation import transformed_for_display
         return transformed_for_display(img_rgb), "Transformed"
-    except Exception as error:  # noqa: BLE001 - display is optional
+    except Exception as error:  # noqa: BLE001 - the picture is optional
         print(f"warning: transformation unavailable ({error})",
               file=sys.stderr)
         return img_rgb, "Transformed (unavailable)"
@@ -113,12 +109,12 @@ def _transformed(img_rgb):
 
 def show(img_rgb, label, confidence, save_to=None):
     """Display the original and the transformed image side by side."""
-    transformed, subtitle = _transformed(img_rgb)
+    picture, subtitle = transformed(img_rgb)
 
     figure, axes = plt.subplots(1, 2, figsize=(9, 5))
     axes[0].imshow(img_rgb)
     axes[0].set_title("Original")
-    axes[1].imshow(np.asarray(transformed).astype(np.uint8))
+    axes[1].imshow(np.asarray(picture).astype(np.uint8))
     axes[1].set_title(subtitle)
     for axis in axes:
         axis.axis("off")
@@ -126,13 +122,12 @@ def show(img_rgb, label, confidence, save_to=None):
                     fontsize=14)
     figure.tight_layout()
 
-    if save_to:
-        figure.savefig(save_to, dpi=120)
-        print(f"saved figure to {save_to}")
-    elif matplotlib.get_backend().lower() == "agg":
-        fallback = "prediction.png"
-        figure.savefig(fallback, dpi=120)
-        print(f"no display available; saved figure to {fallback}")
+    headless = matplotlib.get_backend().lower() == "agg"
+    if save_to or headless:
+        destination = save_to or "prediction.png"
+        figure.savefig(destination, dpi=120)
+        prefix = "" if save_to else "no display available; "
+        print(f"{prefix}saved figure to {destination}")
     else:
         plt.show()
     plt.close(figure)
