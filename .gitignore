@@ -6,13 +6,20 @@
 *.JPEG
 *.png
 *.PNG
-!docs/**            # allow images used only for README/docs, if any
+# allow images used only for README/docs, if any (a trailing comment on a
+# gitignore line is part of the pattern, so this must sit on its own line)
+!docs/**
 augmented_directory/
 dataset/
 datasets/
 Apple/
 Grape/
 data/
+
+# the raw data set: leaves.zip and everywhere it gets unpacked
+leaves.zip
+leaves/
+images/
 
 # release artifacts (zip is forbidden in git; signature.txt is the only
 # allowed trace of it, and even that should be regenerated, not hand-edited)

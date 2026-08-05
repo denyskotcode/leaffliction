@@ -17,6 +17,10 @@ dataset first and splitting afterwards would put augmented copies of
 validation images into the training set: accuracy would look excellent
 and would mean nothing.
 
+The six augmentations and the balancing pass live in Augmentation.py
+(Part 2) and are imported from there, so the images this program trains
+on are the same ones that program produces.
+
 Note: the team brief specifies model.keras, but this machine only has
 Python 3.14, for which TensorFlow publishes no wheel. The artifact is a
 PyTorch model.pt instead; the rest of learnings.zip is unchanged.
@@ -24,164 +28,21 @@ PyTorch model.pt instead; the rest of learnings.zip is unchanged.
 
 import argparse
 import json
-import math
 import os
 import random
-import shutil
 import sys
 import time
 import zipfile
 
-import cv2
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
 
-from utils.dataset import load_image, save_image, split_dataset
+from Augmentation import SEED, build_augmented_dir
+from utils.dataset import load_image, split_dataset
 from utils.preprocess import IMAGE_SIZE, PREPROCESS_NAME, preprocess
-
-SEED = 42
-AUG_NAMES = ("Flip", "Rotate", "Skew", "Shear", "Crop", "Distortion")
-
-
-# --------------------------------------------------------------------------
-# Augmentation -- the six variants required by the subject.
-# Each takes and returns RGB uint8 (H, W, 3).
-# --------------------------------------------------------------------------
-def _flip(img, rng):
-    return cv2.flip(img, 1)
-
-
-def _rotate(img, rng):
-    height, width = img.shape[:2]
-    angle = rng.uniform(-30.0, 30.0)
-    matrix = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1.0)
-    return cv2.warpAffine(img, matrix, (width, height),
-                          borderMode=cv2.BORDER_REFLECT_101)
-
-
-def _skew(img, rng):
-    height, width = img.shape[:2]
-    shift = rng.uniform(0.08, 0.20) * width
-    src = np.float32([[0, 0], [width, 0], [width, height], [0, height]])
-    dst = np.float32([[shift, 0], [width - shift, 0],
-                      [width, height], [0, height]])
-    matrix = cv2.getPerspectiveTransform(src, dst)
-    return cv2.warpPerspective(img, matrix, (width, height),
-                               borderMode=cv2.BORDER_REFLECT_101)
-
-
-def _shear(img, rng):
-    height, width = img.shape[:2]
-    factor = rng.uniform(-0.25, 0.25)
-    matrix = np.float32([[1, factor, -factor * height / 2], [0, 1, 0]])
-    return cv2.warpAffine(img, matrix, (width, height),
-                          borderMode=cv2.BORDER_REFLECT_101)
-
-
-def _crop(img, rng):
-    height, width = img.shape[:2]
-    keep = rng.uniform(0.70, 0.88)
-    new_h, new_w = int(height * keep), int(width * keep)
-    top = rng.randint(0, height - new_h)
-    left = rng.randint(0, width - new_w)
-    cropped = img[top:top + new_h, left:left + new_w]
-    return cv2.resize(cropped, (width, height),
-                      interpolation=cv2.INTER_LINEAR)
-
-
-def _distortion(img, rng):
-    """Barrel / pincushion lens distortion."""
-    height, width = img.shape[:2]
-    strength = rng.uniform(-0.35, 0.35)
-    ys, xs = np.indices((height, width), dtype=np.float32)
-    norm_x = (xs - width / 2) / (width / 2)
-    norm_y = (ys - height / 2) / (height / 2)
-    radius = norm_x ** 2 + norm_y ** 2
-    scale = 1.0 + strength * radius
-    map_x = (norm_x * scale) * (width / 2) + width / 2
-    map_y = (norm_y * scale) * (height / 2) + height / 2
-    return cv2.remap(img, map_x, map_y, cv2.INTER_LINEAR,
-                     borderMode=cv2.BORDER_REFLECT_101)
-
-
-AUGMENTATIONS = {
-    "Flip": _flip,
-    "Rotate": _rotate,
-    "Skew": _skew,
-    "Shear": _shear,
-    "Crop": _crop,
-    "Distortion": _distortion,
-}
-
-
-def augment_image(img_rgb, rng=None):
-    """Return {name: variant} for all six augmentation types."""
-    rng = rng or random.Random(SEED)
-    return {name: fn(img_rgb, rng) for name, fn in AUGMENTATIONS.items()}
-
-
-# --------------------------------------------------------------------------
-# Building the balanced training directory
-# --------------------------------------------------------------------------
-def build_augmented_dir(train_items, out_dir, seed=SEED):
-    """
-    Copy every training image into ``out_dir/<label>/`` and augment the
-    minority classes until each class matches the largest one.
-
-    Only images from the training split ever reach this directory.
-    Returns [(path, label), ...] for the balanced set.
-    """
-    if os.path.isdir(out_dir):
-        shutil.rmtree(out_dir)
-
-    by_label = {}
-    for path, label in train_items:
-        by_label.setdefault(label, []).append(path)
-
-    target = max(len(paths) for paths in by_label.values())
-    print(f"balancing {len(by_label)} classes up to {target} images each")
-
-    balanced = []
-    rng = random.Random(seed)
-    for label in sorted(by_label):
-        paths = sorted(by_label[label])
-        class_dir = os.path.join(out_dir, label)
-        os.makedirs(class_dir, exist_ok=True)
-
-        for path in paths:
-            dest = os.path.join(class_dir, os.path.basename(path))
-            shutil.copyfile(path, dest)
-            balanced.append((dest, label))
-
-        needed = target - len(paths)
-        # (source, augmentation) pairs repeat every lcm(n_paths, 6)
-        # steps, not every n_paths * 6 steps. Numbering the rounds by
-        # the wrong period lets a later file overwrite an earlier one,
-        # which silently under-fills exactly the rarest classes.
-        period = math.lcm(len(paths), len(AUG_NAMES))
-        for index in range(needed):
-            source = paths[index % len(paths)]
-            name = AUG_NAMES[index % len(AUG_NAMES)]
-            round_id = index // period
-            base = os.path.splitext(os.path.basename(source))[0]
-            suffix = f"_{name}.JPG" if round_id == 0 \
-                else f"_{name}{round_id}.JPG"
-            dest = os.path.join(class_dir, base + suffix)
-            variant = AUGMENTATIONS[name](load_image(source), rng)
-            save_image(variant, dest)
-            balanced.append((dest, label))
-
-        written = len(os.listdir(class_dir))
-        if written != target:
-            raise RuntimeError(
-                f"{label}: wrote {written} images but expected {target}; "
-                "augmented filenames are colliding")
-        print(f"  {label}: {len(paths)} -> {written}")
-
-    return balanced
 
 
 # --------------------------------------------------------------------------

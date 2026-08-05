@@ -23,7 +23,8 @@ CLI usage:
     ./Transformation.py path/to/image.jpg
         -> displays the full set of Transformations in a matplotlib window.
 
-    ./Transformation.py -src leaves/images/Apple_healthy/ -dst dst_directory -mask
+    ./Transformation.py -src leaves/images/Apple_healthy/ \
+            -dst dst_directory -mask
         -> batch mode: for every image found under -src (recursively),
            save the requested Transformation(s) into -dst, using the
            original filename + "_<Transformation>" suffix.
@@ -340,7 +341,8 @@ def _process_batch(src, dst, keys, include_hist):
 
         if include_hist:
             hist_fig = color_histogram(img_rgb)
-            hist_path = os.path.join(dst, f"{base}_{SUFFIXES['histogram']}.png")
+            hist_name = f"{base}_{SUFFIXES['histogram']}.png"
+            hist_path = os.path.join(dst, hist_name)
             hist_fig.savefig(hist_path)
             plt.close(hist_fig)
 

@@ -24,22 +24,31 @@ def _is_image(filename):
     return filename.lower().endswith(VALID_EXTENSIONS)
 
 
-def list_images(root):
+def list_images(root, include_root=False):
     """
     Walk ``root`` and return [(path, label), ...] sorted by path.
 
     The label is the name of the directory holding the image, e.g.
     ``Apple_healthy``. Labels live in the folder name and nowhere else.
+
+    Images lying directly in ``root`` are skipped by default, because
+    for a data set root they are strays with no class directory to name
+    them. ``include_root=True`` instead labels them with ``root``'s own
+    name, which is what Part 1 needs when it is pointed straight at a
+    single class directory. Training keeps the default, so the split
+    every accuracy claim rests on is unaffected.
     """
     if not os.path.isdir(root):
         raise NotADirectoryError(f"not a directory: {root}")
 
+    root_label = os.path.basename(os.path.abspath(root))
     items = []
     for dirpath, _dirnames, filenames in os.walk(root):
         label = os.path.basename(dirpath)
         if os.path.abspath(dirpath) == os.path.abspath(root):
-            # Images sitting directly in root have no class directory.
-            continue
+            if not include_root:
+                continue
+            label = root_label
         for filename in filenames:
             if _is_image(filename):
                 items.append((os.path.join(dirpath, filename), label))
@@ -66,10 +75,10 @@ def save_image(img, path):
         raise IOError(f"cannot write image: {path}")
 
 
-def class_counts(root):
+def class_counts(root, include_root=False):
     """Return {label: number_of_images} for every class under ``root``."""
     counts = {}
-    for _path, label in list_images(root):
+    for _path, label in list_images(root, include_root=include_root):
         counts[label] = counts.get(label, 0) + 1
     return counts
 

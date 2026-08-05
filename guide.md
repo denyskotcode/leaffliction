@@ -747,8 +747,9 @@ print('display:', d.shape, d.dtype)
 ./Transformation.py -src leaves/images/Apple_healthy -dst out -mask    # batch
 ```
 
-> **Note for B:** two lines exceed 79 characters. Clean under the team's
-> declared `--max-line-length=100`, but a failure under default flake8.
+> **Resolved:** the two over-length lines here were wrapped, and the
+> team no longer declares `--max-line-length=100`. The whole repo passes
+> `flake8` on default settings, which is the norm the subject specifies.
 
 ---
 
