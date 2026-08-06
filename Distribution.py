@@ -15,8 +15,8 @@ import sys
 
 import matplotlib
 
-# A backend has to be chosen before pyplot is imported: on a machine with
-# no display the default one raises instead of drawing.
+# The backend has to be picked before pyplot is imported: with no display
+# attached, the default one raises instead of drawing.
 if not os.environ.get("DISPLAY") and sys.platform != "darwin":
     matplotlib.use("Agg")
 
@@ -26,15 +26,12 @@ from utils.dataset import class_counts  # noqa: E402
 from utils.naming import plant_type  # noqa: E402
 
 # Categorical slots, checked against colour-vision-deficiency simulation
-# on a light surface. This data set has four classes per plant and these
-# four stay distinguishable in every simulation, including as pie slices
-# where any two may end up side by side. Past four we fall back to the
-# eight-slot order, which is only guaranteed between neighbours -- which
-# is why every chart here also carries a direct label, never colour
-# alone.
-PALETTE_4 = ("#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7")
-PALETTE_8 = ("#2a78d6", "#eb6834", "#1baf7a", "#eda100",
-             "#e87ba4", "#008300", "#4a3aa7", "#e34948")
+# on a light surface. The first four stay apart in every simulation, even
+# as neighbouring pie slices, and four is what this data set needs per
+# plant; the rest are only guaranteed between neighbours. That is why
+# every chart below also carries a written label -- never colour alone.
+PALETTE = ("#2a78d6", "#eb6834", "#1baf7a", "#4a3aa7",
+           "#eda100", "#e87ba4", "#008300", "#e34948")
 
 INK = "#0b0b0b"
 INK_MUTED = "#52514e"
@@ -45,14 +42,11 @@ def collect_counts(root):
     """
     Return {label: image count} for ``root``.
 
-    Falls back to counting ``root``'s own images when the walk finds
-    nothing nested, so pointing the program at a single class directory
-    works as well as pointing it at the data set root.
+    When the walk finds nothing nested it counts ``root``'s own images
+    instead, so aiming the program at one class directory works as well
+    as aiming it at the data set root.
     """
-    counts = class_counts(root)
-    if not counts:
-        counts = class_counts(root, include_root=True)
-    return counts
+    return class_counts(root) or class_counts(root, include_root=True)
 
 
 def group_by_plant(counts):
@@ -64,75 +58,76 @@ def group_by_plant(counts):
 
 
 def colors_for(count):
-    """Pick one colour per class, in a fixed order that never shifts."""
-    palette = PALETTE_4 if count <= len(PALETTE_4) else PALETTE_8
-    return [palette[index % len(palette)] for index in range(count)]
+    """One colour per class, in a fixed order that never shifts."""
+    return [PALETTE[slot % len(PALETTE)] for slot in range(count)]
 
 
-def _draw_pie(axis, labels, values, colors):
+def _style_axis(axis, title):
+    """Muted title, no box, horizontal rules only."""
+    axis.set_title(title, color=INK_MUTED, fontsize=11)
+    axis.tick_params(axis="both", length=0, colors=INK_MUTED)
+    for side in ("top", "right", "left"):
+        axis.spines[side].set_visible(False)
+
+
+def _draw_pie(axis, values, colors):
     """Share of the plant's images held by each class."""
-    wedges, _texts, percents = axis.pie(
+    wedges, _labels, _percents = axis.pie(
         values,
         colors=colors,
         startangle=90,
         counterclock=False,
         autopct=lambda pct: f"{pct:.1f}%",
-        # A thin surface-coloured gap keeps adjacent slices legible even
-        # when their colours are close.
+        # A thin surface-coloured gap keeps adjacent slices readable even
+        # where their colours are close.
         wedgeprops={"edgecolor": "white", "linewidth": 2},
         textprops={"color": "white", "fontsize": 10, "weight": "bold"},
     )
-    axis.set_title("share of images", color=INK_MUTED, fontsize=11)
-    return wedges, percents
+    _style_axis(axis, "share of images")
+    return wedges
 
 
 def _draw_bar(axis, labels, values, colors):
-    """Absolute count per class, labelled from the directory names."""
-    positions = range(len(labels))
-    bars = axis.bar(positions, values, color=colors, width=0.62)
+    """Absolute count per class, named from the directories."""
+    slots = range(len(labels))
+    tallest = max(values)
+    bars = axis.bar(slots, values, color=colors, width=0.62)
 
-    axis.set_xticks(list(positions))
+    axis.set_xticks(list(slots))
     axis.set_xticklabels(labels, rotation=20, ha="right",
                          color=INK_MUTED, fontsize=9)
     axis.set_ylabel("images", color=INK_MUTED, fontsize=10)
-    axis.set_title("images per class", color=INK_MUTED, fontsize=11)
-
+    axis.set_ylim(0, tallest * 1.12)
     axis.grid(axis="y", color=GRID, linewidth=0.8)
     axis.set_axisbelow(True)
-    for side in ("top", "right", "left"):
-        axis.spines[side].set_visible(False)
+    _style_axis(axis, "images per class")
     axis.spines["bottom"].set_color(GRID)
-    axis.tick_params(axis="both", length=0, colors=INK_MUTED)
 
-    headroom = max(values) * 0.02 if values else 0
-    for rectangle, value in zip(bars, values):
-        axis.annotate(
-            str(value),
-            (rectangle.get_x() + rectangle.get_width() / 2,
-             rectangle.get_height() + headroom),
-            ha="center", va="bottom", fontsize=9, color=INK,
-        )
-    axis.set_ylim(0, max(values) * 1.12 if values else 1)
+    for bar, value in zip(bars, values):
+        axis.annotate(str(value),
+                      (bar.get_x() + bar.get_width() / 2,
+                       value + tallest * 0.02),
+                      ha="center", va="bottom", fontsize=9, color=INK)
 
 
 def draw_plant(plant, counts):
     """Build the pie + bar figure for one plant type."""
     labels = list(counts)
-    values = [counts[label] for label in labels]
+    values = list(counts.values())
     colors = colors_for(len(labels))
 
-    figure, (ax_pie, ax_bar) = plt.subplots(1, 2, figsize=(13, 6))
+    figure, (pie_axis, bar_axis) = plt.subplots(1, 2, figsize=(13, 6))
     figure.suptitle(f"{plant} class distribution",
                     fontsize=15, color=INK, x=0.02, ha="left")
 
-    wedges, _percents = _draw_pie(ax_pie, labels, values, colors)
-    _draw_bar(ax_bar, labels, values, colors)
+    wedges = _draw_pie(pie_axis, values, colors)
+    _draw_bar(bar_axis, labels, values, colors)
 
     # The legend names the classes once for both charts, so identity
-    # never depends on remembering a colour.
-    figure.legend(wedges, labels, loc="lower center", ncol=min(4, len(labels)),
-                  frameon=False, fontsize=9, labelcolor=INK_MUTED,
-                  bbox_to_anchor=(0.5, -0.01))
+    # never rests on remembering a colour.
+    figure.legend(wedges, labels, loc="lower center", frameon=False,
+                  ncol=min(4, len(labels)), fontsize=9,
+                  labelcolor=INK_MUTED, bbox_to_anchor=(0.5, -0.01))
     figure.tight_layout(rect=(0, 0.06, 1, 0.95))
     return figure
 
@@ -143,9 +138,8 @@ def report(groups):
         counts = groups[plant]
         total = sum(counts.values())
         print(f"{plant}: {total} images across {len(counts)} classes")
-        for label in sorted(counts):
-            share = counts[label] / total * 100
-            print(f"  {label:<24} {counts[label]:>6}  ({share:5.1f}%)")
+        for label, count in sorted(counts.items()):
+            print(f"  {label:<24} {count:>6}  ({count / total * 100:5.1f}%)")
 
 
 def build_parser():

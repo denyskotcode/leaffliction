@@ -27,6 +27,11 @@ leaffliction/
 │   ├── dataset.py          # load_image / save_image, path helpers
 │   ├── naming.py            # file naming conventions
 │   └── preprocess.py        # shared preprocessing for train + predict
+├── docs/
+│   ├── 00_TEAM_BRIEF.md     # contracts between the three parts, as built
+│   ├── guide.md             # file-by-file walkthrough + runnable tests
+│   ├── PERSON_A/B/C.md      # per-owner task sheets
+│   └── Leaffliction.md      # the subject
 ├── requirements.txt
 ├── signature.txt            # sha1 of dataset.zip (generated at release time)
 └── .gitignore
@@ -67,6 +72,25 @@ plant type, labeled from the subdirectory names.
 
 ```bash
 ./Distribution.py ./leaves/images
+
+# also write the figures as PNGs; skip the window entirely (ssh, CI)
+./Distribution.py ./leaves/images --save-dir charts --no-display
+
+# any subtree works, down to a single class directory
+./Distribution.py ./leaves/images/Apple_rust
+```
+
+It prints the counts as well as charting them, so the analysis survives
+with no display attached:
+
+```
+Apple: 3164 images across 4 classes
+  Apple_Black_rot             620  ( 19.6%)
+  Apple_healthy              1640  ( 51.8%)
+  Apple_rust                  275  (  8.7%)
+  Apple_scab                  629  ( 19.9%)
+Grape: 4057 images across 4 classes
+  ...
 ```
 
 ```bash
@@ -105,19 +129,34 @@ ls
 # image (1)_Distortion.JPG
 ```
 
-Run in bulk over a whole class directory to balance it (exact flag names
-depend on Person A's implementation):
+Run it over a whole data set to balance it: every image is copied across,
+then the smaller classes are augmented until each one matches the
+largest.
 
 ```bash
-./Augmentation.py -src leaves/images/Grape_healthy -dst leaves/images/Grape_healthy
+./Augmentation.py -src leaves/images -dst augmented_directory
 ```
+
+```
+balancing 8 classes up to 1640 images each
+  Apple_Black_rot: 620 -> 1640
+  Apple_healthy: 1640 -> 1640
+  ...
+```
+
+Flags: `-src`, `-dst` (default `augmented_directory`), `--seed`
+(default 42), `--no-display`. `train.py` imports these same functions, so
+the images the model learns from are produced by exactly this code.
 
 ---
 
 ## Part 3 — Transformation.py
 
 Apply leaf-image transformations: Gaussian blur, mask, ROI objects,
-analyze object, pseudolandmarks, plus a color histogram.
+analyze object, pseudolandmarks, plus a color histogram over the nine
+channels the subject's Figure IV.7 names (blue, blue-yellow, green,
+green-magenta, hue, lightness, red, saturation, value — drawn from RGB,
+HSV and LAB).
 
 ### Help
 
@@ -236,6 +275,8 @@ displays the original beside Person B's transformed rendering, and
 prints:
 
 ```
+===          DL classification          ===
+
 Class predicted : Apple_healthy
 Confidence      : 99.87%
 ```
@@ -337,8 +378,7 @@ evaluator runs it bare, so the 79-column default is the limit that
 counts. Do not relax it with `--max-line-length`.
 
 ```bash
-python3 -m pip install --user --break-system-packages flake8
-flake8 *.py utils/*.py
+.venv/bin/python -m flake8 . --exclude=.venv,augmented_directory
 ```
 
 ---
@@ -357,6 +397,7 @@ python3 -m venv .venv
 
 # part 2
 ./Augmentation.py "leaves/images/Apple_healthy/image (1).JPG"
+./Augmentation.py -src leaves/images -dst augmented_directory
 
 # part 3
 ./Transformation.py -h
@@ -373,5 +414,20 @@ zip -r dataset.zip leaves/images learnings.zip
 sha1sum dataset.zip | awk '{print $1}' > signature.txt
 
 # lint (default settings: 79 columns, as the subject requires)
-flake8 *.py utils/*.py
+.venv/bin/python -m flake8 . --exclude=.venv,augmented_directory
 ```
+
+---
+
+## Further reading
+
+- [`docs/00_TEAM_BRIEF.md`](docs/00_TEAM_BRIEF.md) — the contracts between
+  the three parts, as built, plus where the code deviates from the
+  original plan and why.
+- [`docs/guide.md`](docs/guide.md) — file-by-file, function-by-function
+  walkthrough with a runnable test for every piece, the end-to-end recipe,
+  and the checks that prove the accuracy is honest.
+- [`docs/PERSON_A.md`](docs/PERSON_A.md) /
+  [`docs/PERSON_B.md`](docs/PERSON_B.md) /
+  [`docs/PERSON_C.md`](docs/PERSON_C.md) — per-owner task sheets.
+- [`docs/Leaffliction.md`](docs/Leaffliction.md) — the subject.
