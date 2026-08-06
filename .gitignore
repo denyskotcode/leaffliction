@@ -55,6 +55,7 @@ dist/
 # venvs (in case someone on the team does use one)
 .venv/
 venv/
+venvzip/
 env/
 
 # --- Editors / OS junk ---

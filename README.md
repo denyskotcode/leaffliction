@@ -4,37 +4,46 @@ Computer vision project: image classification for plant leaf disease
 recognition. The pipeline covers data set analysis, data augmentation,
 image transformation, and a CNN-based classifier with prediction.
 
+## Authors
+
+| Login | Owns |
+|---|---|
+| `dkot` | Part 1 (`Distribution.py`), Part 2 (`Augmentation.py`), `utils/dataset.py`, `utils/naming.py` |
+| `anmakaro` | Part 3 (`Transformation.py`), the release archive and `signature.txt` |
+| `msylaiev` | Part 4 (`train.py`, `predict.py`), `utils/preprocess.py` |
+
 ## Project structure
+
+Only the code and `signature.txt` are versioned. The data set, the
+archives and the trained model are deliberately absent — see
+[Release](#release-datasetzip--signaturetxt).
 
 ```
 leaffliction/
-├── leaves/
-│   └── images/
-│       ├── Apple_Black_rot/
-│       ├── Apple_healthy/
-│       ├── Apple_rust/
-│       ├── Apple_scab/
-│       ├── Grape_Black_rot/
-│       ├── Grape_Esca/
-│       ├── Grape_healthy/
-│       └── Grape_spot/
-├── Distribution.py        # Part 1 — data set analysis (pie/bar charts)
-├── Augmentation.py        # Part 2 — data augmentation (balancing)
-├── Transformation.py      # Part 3 — image transformations
-├── train.py                # Part 4 — model training
-├── predict.py               # Part 4 — prediction / evaluation
+├── Distribution.py       # Part 1 — data set analysis (pie/bar charts)
+├── Augmentation.py       # Part 2 — data augmentation (balancing)
+├── Transformation.py     # Part 3 — image transformations
+├── train.py              # Part 4 — model training
+├── predict.py            # Part 4 — prediction / evaluation
 ├── utils/
-│   ├── dataset.py          # load_image / save_image, path helpers
-│   ├── naming.py            # file naming conventions
-│   └── preprocess.py        # shared preprocessing for train + predict
-├── docs/
-│   ├── 00_TEAM_BRIEF.md     # contracts between the three parts, as built
-│   ├── guide.md             # file-by-file walkthrough + runnable tests
-│   ├── PERSON_A/B/C.md      # per-owner task sheets
-│   └── Leaffliction.md      # the subject
+│   ├── dataset.py        # load_image / save_image, split, path helpers
+│   ├── naming.py         # file naming conventions
+│   └── preprocess.py     # shared preprocessing for train + predict
 ├── requirements.txt
-├── signature.txt            # sha1 of dataset.zip (generated at release time)
+├── signature.txt         # sha1 of dataset.zip (generated at release time)
 └── .gitignore
+```
+
+The data set is expected at `leaves/images/`, one directory per class,
+the directory name *being* the label — no class name is hardcoded
+anywhere:
+
+```
+leaves/images/
+├── Apple_Black_rot/   ├── Grape_Black_rot/
+├── Apple_healthy/     ├── Grape_Esca/
+├── Apple_rust/        ├── Grape_healthy/
+└── Apple_scab/        └── Grape_spot/
 ```
 
 ## Setup
@@ -203,7 +212,10 @@ Combine any of these; if none are given, all are produced.
 ./Transformation.py -src leaves/images/Apple_healthy -dst out -mask -histogram
 ```
 
-### Using it as a library (for Person C)
+### Using it as a library
+
+`predict.py` imports these to render the transformed panel beside the
+original:
 
 ```python
 from Transformation import transform_image, color_histogram, transformed_for_display
@@ -271,7 +283,7 @@ Useful flags:
 
 Reads **only** `model.pt` + `labels.json` from `learnings.zip`,
 preprocesses with the same `utils/preprocess.py` used at training time,
-displays the original beside Person B's transformed rendering, and
+displays the original beside Part 3's `analyze_object` rendering, and
 prints:
 
 ```
@@ -340,8 +352,8 @@ different one.
 
 ## Release (dataset.zip + signature.txt)
 
-Built once the augmented data set (Person A) and trained model /
-`learnings.zip` (Person C) are ready.
+Built once the augmented data set (Part 2) and the trained model /
+`learnings.zip` (Part 4) are ready.
 
 ```bash
 # 1. assemble the release archive
@@ -378,7 +390,7 @@ evaluator runs it bare, so the 79-column default is the limit that
 counts. Do not relax it with `--max-line-length`.
 
 ```bash
-.venv/bin/python -m flake8 . --exclude=.venv,augmented_directory
+.venv/bin/python -m flake8 *.py utils/*.py
 ```
 
 ---
@@ -414,20 +426,40 @@ zip -r dataset.zip leaves/images learnings.zip
 sha1sum dataset.zip | awk '{print $1}' > signature.txt
 
 # lint (default settings: 79 columns, as the subject requires)
-.venv/bin/python -m flake8 . --exclude=.venv,augmented_directory
+.venv/bin/python -m flake8 *.py utils/*.py
 ```
 
 ---
 
-## Further reading
+## Data set integrity
 
-- [`docs/00_TEAM_BRIEF.md`](docs/00_TEAM_BRIEF.md) — the contracts between
-  the three parts, as built, plus where the code deviates from the
-  original plan and why.
-- [`docs/guide.md`](docs/guide.md) — file-by-file, function-by-function
-  walkthrough with a runnable test for every piece, the end-to-end recipe,
-  and the checks that prove the accuracy is honest.
-- [`docs/PERSON_A.md`](docs/PERSON_A.md) /
-  [`docs/PERSON_B.md`](docs/PERSON_B.md) /
-  [`docs/PERSON_C.md`](docs/PERSON_C.md) — per-owner task sheets.
-- [`docs/Leaffliction.md`](docs/Leaffliction.md) — the subject.
+The four checks that matter, runnable at any time:
+
+```bash
+# 1. nothing forbidden is versioned  -> 0
+git ls-files | grep -icE '\.(jpg|jpeg|png|zip)$'
+
+# 2. the signature still matches the data set  -> two identical hashes
+sha1sum dataset.zip; cat signature.txt
+
+# 3. the split is deterministic, stratified and leak-free
+.venv/bin/python -c "
+from utils.dataset import split_dataset
+tr, va = split_dataset('leaves/images', 0.2, 42)
+print('train', len(tr), 'val', len(va))
+print('overlap:', len({p for p, _ in tr} & {p for p, _ in va}))"
+
+# 4. no validation image reached the augmented training set  -> 0
+.venv/bin/python -c "
+import os
+from utils.dataset import split_dataset
+from utils.naming import split_augmented
+val = {(l, os.path.basename(p))
+       for p, l in split_dataset('leaves/images', 0.2, 42)[1]}
+print(sum((c, split_augmented(f)[0] + '.JPG') in val
+          for c in os.listdir('augmented_directory')
+          for f in os.listdir(os.path.join('augmented_directory', c))))"
+```
+
+Expected: `0`, matching hashes, `train 5777 val 1444` / `overlap: 0`,
+and `0`.

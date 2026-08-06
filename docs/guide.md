@@ -104,7 +104,7 @@ Default settings, i.e. 79 columns; do not relax it with
 `--max-line-length`:
 
 ```bash
-.venv/bin/python -m flake8 . --exclude=.venv,augmented_directory
+.venv/bin/python -m flake8 *.py utils/*.py
 ```
 
 ### Build a small test set
@@ -1100,7 +1100,7 @@ The full sequence, from clean checkout to verified result.
 .venv/bin/python -c "import cv2, numpy, matplotlib, torch; print('OK')"
 
 # 2. lint the whole repo
-.venv/bin/python -m flake8 . --exclude=.venv,augmented_directory && echo "lint clean"
+.venv/bin/python -m flake8 *.py utils/*.py && echo "lint clean"
 
 # 3. dataset sanity (Part 1)
 .venv/bin/python Distribution.py leaves/images --no-display

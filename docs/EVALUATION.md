@@ -49,7 +49,7 @@ sha1sum dataset.zip; cat signature.txt   # the two hashes must be identical
 
 # the working tree is clean and nothing forbidden is tracked
 git status --short                       # empty
-git ls-files | wc -l                     # 23
+git ls-files | wc -l                     # 13 (school git; 23 on GitHub)
 ```
 
 **Rules of the room**
@@ -72,15 +72,16 @@ of the way first; it sets a good tone.
 git ls-files
 ```
 
-Expected — **23 files, no images, no archives:**
+Expected — **13 files, no images, no archives:**
 ```
 .gitignore  README.md  requirements.txt  signature.txt
 Distribution.py  Augmentation.py  Transformation.py  train.py  predict.py
 utils/__init__.py  utils/dataset.py  utils/naming.py  utils/preprocess.py
-docs/00_TEAM_BRIEF.md  docs/guide.md  docs/EVALUATION.md  docs/Leaffliction.md
-docs/PERSON_A.md  docs/PERSON_B.md  docs/PERSON_C.md
-docs/PERSON_A_GUIDE.md  docs/PERSON_B_GUIDE.md  docs/PERSON_C_GUIDE.md
 ```
+
+> This file and the rest of `docs/` are **not** in the school
+> repository — the subject says only the programs and `signature.txt`
+> belong there. They live on the GitHub mirror, which has 23 files.
 
 ```bash
 git ls-files | grep -icE '\.(jpg|jpeg|png|zip)$'    # 0
@@ -111,11 +112,18 @@ The subject calls `flake8` the Python norminette. An evaluator runs it
 bare, so run it bare — **no `--max-line-length`**.
 
 ```bash
-.venv/bin/python -m flake8 . --exclude=.venv,augmented_directory && echo CLEAN
+.venv/bin/python -m flake8 *.py utils/*.py && echo CLEAN
 ```
 Expected: `CLEAN`, no output above it.
 
-> **Say:** "Default settings, 79 columns, whole repo."
+> **Say:** "Default settings, 79 columns, every source file we wrote —
+> nine of them, no exclusions."
+
+Naming the files beats `flake8 .` with an `--exclude` list: the exclude
+form has to be updated every time a new directory (a second venv, a
+scratch folder) turns up beside the code, and if you miss one, flake8
+walks into a third-party package and dies with a `RecursionError`
+instead of printing `CLEAN`.
 
 ---
 
