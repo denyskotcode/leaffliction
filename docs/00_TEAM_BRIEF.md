@@ -101,6 +101,7 @@ SEED = 42
 ```python
 transform_image(img_rgb) -> dict[str, np.ndarray]
 #   keys: original, gaussian_blur, mask, roi_objects, analyze_object, pseudolandmarks
+histogram_channels(img_rgb) -> tuple   # 9 channels: RGB + HSV + LAB
 color_histogram(img_rgb) -> matplotlib.Figure
 transformed_for_display(img_rgb) -> np.ndarray          # what predict.py shows
 leaf_outline(img_rgb) -> (mask, contour)                # the segmentation both share

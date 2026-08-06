@@ -15,13 +15,15 @@ live in [`guide.md`](guide.md) §8.
 
 Six transformations, built on OpenCV/NumPy in the spirit of the PlantCV
 pipeline the subject shows: **original, Gaussian blur, mask, ROI objects,
-analyze object, pseudolandmarks**, plus a **colour histogram**
-(Figure IV.7).
+analyze object, pseudolandmarks**, plus a **colour histogram** over the
+nine channels Figure IV.7 names (blue, blue-yellow, green, green-magenta,
+hue, lightness, red, saturation, value — RGB, HSV and LAB).
 
 Exposed for Person C:
 ```python
 transform_image(img_rgb) -> dict[str, np.ndarray]
 #   keys: original, gaussian_blur, mask, roi_objects, analyze_object, pseudolandmarks
+histogram_channels(img_rgb) -> tuple   # the 9 channels Figure IV.7 names
 color_histogram(img_rgb) -> matplotlib.Figure
 transformed_for_display(img_rgb) -> np.ndarray   # the single image predict.py shows
 leaf_outline(img_rgb) -> (mask, contour)         # the segmentation the rest build on

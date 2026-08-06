@@ -153,7 +153,10 @@ the images the model learns from are produced by exactly this code.
 ## Part 3 — Transformation.py
 
 Apply leaf-image transformations: Gaussian blur, mask, ROI objects,
-analyze object, pseudolandmarks, plus a color histogram.
+analyze object, pseudolandmarks, plus a color histogram over the nine
+channels the subject's Figure IV.7 names (blue, blue-yellow, green,
+green-magenta, hue, lightness, red, saturation, value — drawn from RGB,
+HSV and LAB).
 
 ### Help
 
@@ -272,6 +275,8 @@ displays the original beside Person B's transformed rendering, and
 prints:
 
 ```
+===          DL classification          ===
+
 Class predicted : Apple_healthy
 Confidence      : 99.87%
 ```

@@ -163,27 +163,54 @@ def transform_image(img_rgb):
     }
 
 
+def histogram_channels(img_rgb):
+    """
+    The nine channels Figure IV.7 plots, in the order the subject lists
+    them: (label, single-channel image, plot colour).
+
+    Three colour spaces, because each says something the others hide.
+    RGB is what the sensor recorded. HSV separates *which* colour (hue)
+    from *how much* of it (saturation) and *how bright* (value), so a
+    lesion stays recognisable under a different exposure. LAB splits
+    lightness away from two opponent axes -- green-magenta and
+    blue-yellow -- which is where leaf tissue and brown rot separate most
+    cleanly.
+    """
+    hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
+    lab = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)
+    return (
+        ("blue", img_rgb[:, :, 2], "#2a78d6"),
+        ("blue-yellow", lab[:, :, 2], "#eda100"),
+        ("green", img_rgb[:, :, 1], "#1baf7a"),
+        ("green-magenta", lab[:, :, 1], "#e87ba4"),
+        ("hue", hsv[:, :, 0], "#4a3aa7"),
+        ("lightness", lab[:, :, 0], "#52514e"),
+        ("red", img_rgb[:, :, 0], "#e34948"),
+        ("saturation", hsv[:, :, 1], "#00a5b5"),
+        ("value", hsv[:, :, 2], "#eb6834"),
+    )
+
+
 def color_histogram(img_rgb):
     """
-    Per-channel colour histograms (RGB plus HSV saturation), as in
-    Figure IV.7 of the subject. Counts are turned into proportions so
-    images of different sizes stay comparable.
-    """
-    saturation = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)[:, :, 1]
-    channels = (("Red", img_rgb[:, :, 0], "red"),
-                ("Green", img_rgb[:, :, 1], "green"),
-                ("Blue", img_rgb[:, :, 2], "blue"),
-                ("Saturation", saturation, "orange"))
+    Per-channel colour histograms, as in Figure IV.7 of the subject.
 
-    figure, axis = plt.subplots(figsize=(6, 4))
-    for label, channel, colour in channels:
+    Counts are turned into proportions, so images of different sizes stay
+    comparable. Every channel is binned over 0..255; OpenCV packs 8-bit
+    hue into 0..179, so that one curve simply ends early rather than
+    being rescaled into a range it does not occupy.
+    """
+    figure, axis = plt.subplots(figsize=(8, 5))
+    for label, channel, colour in histogram_channels(img_rgb):
         counts = cv2.calcHist([channel], [0], None, [256], [0, 256]).ravel()
-        axis.plot(counts / counts.sum(), color=colour, label=label)
+        axis.plot(counts / counts.sum(), color=colour, label=label,
+                  linewidth=1.4)
 
     axis.set_xlabel("Pixel intensity")
     axis.set_ylabel("Proportion of pixels")
     axis.set_title("Colour histogram")
-    axis.legend()
+    axis.set_xlim(0, 255)
+    axis.legend(loc="upper right", ncol=2, frameon=False, fontsize=9)
     figure.tight_layout()
     return figure
 

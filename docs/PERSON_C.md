@@ -80,8 +80,10 @@ images.
 3. Displays the original beside B's `transformed_for_display` rendering —
    wrapped in `try/except`, so a display failure never takes down the
    classification.
-4. Prints the class and its confidence:
+4. Prints the subject's banner, then the class and its confidence:
 ```
+===          DL classification          ===
+
 Class predicted : Apple_healthy
 Confidence      : 99.87%
 ```

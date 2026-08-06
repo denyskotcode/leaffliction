@@ -35,6 +35,9 @@ from utils.preprocess import PREPROCESS_NAME, preprocess  # noqa: E402
 DEFAULT_MODEL = "learnings.zip"
 NEEDED = ("model.pt", "labels.json")
 
+# The banner the subject prints above its prediction.
+BANNER = "===          DL classification          ==="
+
 
 def locate_artifacts(model_source, temp_dir):
     """
@@ -173,6 +176,7 @@ def main():
             return 1
         label, confidence = predict(model, classes, img_rgb)
 
+    print(f"\n{BANNER}\n")
     print(f"Class predicted : {label}")
     print(f"Confidence      : {confidence:.2%}")
 

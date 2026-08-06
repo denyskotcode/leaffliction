@@ -741,10 +741,20 @@ The full pipeline. Keys: `original`, `gaussian_blur`, `mask`,
 `roi_objects`, `analyze_object`, `pseudolandmarks` — all RGB uint8 of the
 input's shape.
 
-### `color_histogram(img_rgb) -> matplotlib.Figure`
-Per-channel RGB plus HSV-saturation histograms (Figure IV.7 in the
-subject). Counts are turned into proportions, so images of different sizes
-stay comparable.
+### `histogram_channels(img_rgb)` / `color_histogram(img_rgb) -> Figure`
+
+The **nine** channels Figure IV.7 names, in the subject's order: blue,
+blue-yellow, green, green-magenta, hue, lightness, red, saturation,
+value. That is three colour spaces — RGB (what the sensor recorded), HSV
+(which colour, how saturated, how bright) and LAB (lightness split from
+the two opponent axes, where leaf tissue and brown rot separate most
+cleanly). `histogram_channels` returns `(label, channel, colour)` triples;
+`color_histogram` plots them.
+
+Counts are turned into proportions, so images of different sizes stay
+comparable. All nine are binned over 0..255; OpenCV packs 8-bit hue into
+0..179, so that curve simply ends early rather than being rescaled into a
+range it does not occupy.
 
 ### `transformed_for_display(img_rgb) -> np.ndarray`
 The single rendering `predict.py` shows beside the original: the
@@ -1058,7 +1068,7 @@ for c in Apple_Black_rot Apple_healthy Apple_rust Apple_scab \
          Grape_Black_rot Grape_Esca Grape_healthy Grape_spot; do
   f=$(ls "leaves/images/$c" | head -1)
   echo -n "$c -> "
-  .venv/bin/python predict.py "leaves/images/$c/$f" --no-display | head -1
+  .venv/bin/python predict.py "leaves/images/$c/$f" --no-display | grep "Class predicted"
 done
 ```
 
@@ -1113,7 +1123,7 @@ unzip -l learnings.zip | head -6
 # 9. predict on every class
 for c in $(ls leaves/images); do
   f=$(ls "leaves/images/$c" | head -1)
-  echo -n "$c -> "; .venv/bin/python predict.py "leaves/images/$c/$f" --no-display | head -1
+  echo -n "$c -> "; .venv/bin/python predict.py "leaves/images/$c/$f" --no-display | grep "Class predicted"
 done
 ```
 
